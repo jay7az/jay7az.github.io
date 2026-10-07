@@ -1,31 +1,196 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<link rel="preconnect" href="https://fonts.gstatic.com">
-<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Jamie Newell</title>
-<meta name="description" content="Jamie Newell" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;600&display=swap">
 <style>
-body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-  background: url('bg.jpg') no-repeat center center / cover; 
-}
-h1{
-  position: relative;
-  top: -10%;
-  margin: 0;
-  font-family: 'Permanent Marker', cursive;
-  font-size: 11vw;
-  color: #fff;
-}
+  /* Layout: the name is set huge across the screen but drawn invisibly; it only shows where the ribbon of lines rolls over it. */
+  :root {
+    --bg: #0b0f14;
+    --muted: #a7b1bd;
+    --amber: #e39a4f;
+    --teal: #2cc3b0;
+    --blue: #3a86e8;
+    --indigo: #2f5fcf;
+    --display: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .role {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(clamp(32px, 9vh, 96px) + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    display: flex; justify-content: center; align-items: center; gap: 14px;
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(0.72rem, 0.95vw, 0.85rem);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    animation: rise 1.2s cubic-bezier(.2,.7,.2,1) 0.6s both;
+  }
+  .role span { margin-right: -0.22em; }
+  .role::before, .role::after { content: ""; flex: none; width: 48px; height: 1px; }
+  .role::before { background: linear-gradient(90deg, transparent, var(--amber) 45%, var(--teal)); }
+  .role::after { background: linear-gradient(90deg, var(--blue), var(--indigo) 55%, transparent); }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+  @media (max-width: 600px) {
+    .role { gap: 10px; font-size: 0.68rem; letter-spacing: 0.14em; white-space: nowrap; }
+    .role span { margin-right: -0.14em; }
+    .role::before, .role::after { width: 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .role { animation: none; } }
 </style>
 </head>
 <body>
-<h1>Jamie Newell</h1>
+<h1 class="sr">Jamie Newell</h1>
+<canvas id="c" aria-hidden="true"></canvas>
+<p class="role"><span>Engineer &amp; Digital Consultant</span></p>
+
+<script>
+(() => {
+  const NAME = ["Jamie", "Newell"];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cv = document.getElementById("c");
+  const ctx = cv.getContext("2d");
+  const mask = document.createElement("canvas"), mctx = mask.getContext("2d");
+  const work = document.createElement("canvas"), wctx = work.getContext("2d");
+
+  const css = getComputedStyle(document.documentElement);
+  const tok = n => css.getPropertyValue(n).trim();
+  const rgb = hex => { const n = parseInt(hex.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const AMBER = rgb(tok("--amber")), TEAL = rgb(tok("--teal")), BLUE = rgb(tok("--blue"));
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  const lift = (c, k) => c.map(v => Math.round(v + (255 - v) * k));   // mix toward white
+  const FONT = '600 100px "Inter Tight", "Helvetica Neue", Arial, sans-serif';
+
+  const LINES = 64;
+  let W, H, dpr, gradDim, gradBright, portrait, textTop, textBottom;
+
+  function size(c, g) { c.width = W * dpr; c.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+
+  function resize() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight; portrait = H > W * 1.1;
+    size(cv, ctx); size(mask, mctx); size(work, wctx);
+
+    gradDim = ctx.createLinearGradient(0, 0, W, 0);
+    gradDim.addColorStop(0.00, rgba(AMBER, 0));
+    gradDim.addColorStop(0.12, rgba(AMBER, 0.32));
+    gradDim.addColorStop(0.45, rgba(TEAL, 0.38));
+    gradDim.addColorStop(0.85, rgba(BLUE, 0.4));
+    gradDim.addColorStop(1.00, rgba(BLUE, 0));
+
+    gradBright = wctx.createLinearGradient(0, 0, W, 0);
+    gradBright.addColorStop(0.00, rgba(lift(AMBER, 0.45), 1));
+    gradBright.addColorStop(0.45, rgba(lift(TEAL, 0.5), 1));
+    gradBright.addColorStop(1.00, rgba(lift(BLUE, 0.5), 1));
+
+    buildMask();
+  }
+
+  // the name, set as large as the screen allows, drawn only into an offscreen mask
+  function buildMask() {
+    mctx.clearRect(0, 0, W, H);
+    mctx.font = FONT;
+    mctx.textAlign = "center";
+    mctx.textBaseline = "alphabetic";
+    mctx.fillStyle = "#fff";
+    const lines = portrait ? NAME : [NAME.join(" ")];
+    const widest = Math.max(...lines.map(l => mctx.measureText(l).width));
+    const capH = 72;                       // approx cap height at 100px
+    let px = (W * 0.9) / widest * 100;
+    const lineGap = 1.12;
+    const maxBlock = H * (portrait ? 0.42 : 0.4);
+    px = Math.min(px, maxBlock / ((lines.length - 1) * lineGap + 0.72) );
+    mctx.font = FONT.replace("100px", px.toFixed(1) + "px");
+    const blockH = (lines.length - 1) * px * lineGap + capH / 100 * px;
+    const centreY = H * (portrait ? 0.45 : 0.46);
+    textTop = centreY - blockH / 2;
+    textBottom = centreY + blockH / 2;
+    lines.forEach((l, i) => mctx.fillText(l, W / 2, textTop + capH / 100 * px + i * px * lineGap));
+  }
+
+  // one shared geometry for every strand, so the dim and lit passes line up exactly
+  function strands(g, t, width) {
+    const span = textBottom - textTop;
+    // the ribbon's spine drifts up and down so it rolls across the whole name over time
+    const sweep = Math.sin(t * 0.16) * span * 0.7 + Math.sin(t * 0.07 + 1.3) * span * 0.3;
+    const cy = (textTop + textBottom) / 2 - span * 0.3 + sweep;   // strands sit slightly below the spine, so lift it
+    const amp = span * (portrait ? 0.3 : 0.4);
+    const step = Math.max(4, W / 260);
+    g.lineWidth = width;
+    for (let i = 0; i < LINES; i++) {
+      const k = i / (LINES - 1);
+      const centre = 1 - Math.abs(k - 0.5) * 2;
+      g.globalAlpha = 0.35 + 0.65 * centre;
+      g.beginPath();
+      for (let x = -step; x <= W + step; x += step) {
+        const u = x / W;
+        const spine = cy + Math.sin(u * 2.3 - t * 0.35) * amp + Math.sin(u * 5.1 + t * 0.22) * amp * 0.22;
+        const spread = span * (1.0 + 0.7 * Math.pow(u, 1.3)) * (portrait ? 0.75 : 1);
+        const twist = Math.sin(u * 3.4 - t * 0.5 + k * Math.PI * 1.15);
+        const y = spine + spread * ((k - 0.5) * 1.1 + 0.35 * twist * (0.4 + k));
+        x === -step ? g.moveTo(x, y) : g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+
+  function draw(ms) {
+    const t = ms / 1000;
+
+    // 1. the ribbon everywhere, kept dim
+    ctx.globalCompositeOperation = "source-over";
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = gradDim;
+    strands(ctx, t, 1);
+
+    // 2. the same strands, bright and heavier, kept only inside the letters
+    wctx.globalCompositeOperation = "source-over";
+    wctx.setTransform(1, 0, 0, 1, 0, 0);
+    wctx.clearRect(0, 0, work.width, work.height);
+    wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    wctx.globalCompositeOperation = "lighter";
+    wctx.strokeStyle = gradBright;
+    strands(wctx, t, 2.2);
+    wctx.setTransform(1, 0, 0, 1, 0, 0);
+    wctx.globalCompositeOperation = "destination-in";
+    wctx.drawImage(mask, 0, 0);
+    wctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(work, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  let start = null;
+  const loop = ms => {
+    if (start === null) start = ms;
+    draw((ms - start) + 4000);
+    requestAnimationFrame(loop);
+  };
+
+  let rt;
+  addEventListener("resize", () => {
+    clearTimeout(rt);
+    rt = setTimeout(() => { resize(); if (reduce) draw(9000); }, 100);
+  });
+
+  const go = () => { resize(); if (reduce) draw(9000); else requestAnimationFrame(loop); };
+  // wait for the font so the hidden letters are measured with the real typeface
+  (document.fonts && document.fonts.load ? document.fonts.load(FONT).catch(() => {}) : Promise.resolve())
+    .then(go, go);
+})();
+</script>
 </body>
 </html>
